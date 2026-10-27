@@ -13,7 +13,20 @@ hooks = [
 ]
 
 [[repos]]
+repo = "https://github.com/crate-ci/typos"
+rev = "v1.51.1"
+hooks = [{ id = "typos" }]
+
+[[repos]]
+repo = "https://github.com/hukkin/mdformat"
+rev = "1.0.0"
+hooks = [{ id = "mdformat", additional_dependencies = ["mdformat-gfm==1.0.0"] }]
+
+# Toolchains are named explicitly so an exported RUSTUP_TOOLCHAIN cannot override them.
+[[repos]]
 repo = "local"
 hooks = [
   { id = "rustfmt", name = "rustfmt", language = "system", entry = "rustfmt --edition 2024", types = ["rust"] },
+  { id = "clippy", name = "clippy (esp32s3)", language = "system", entry = "cargo +esp clippy --release --lib --examples --features embedded-graphics -- -D warnings", types = ["rust"], pass_filenames = false },
+  { id = "clippy-host", name = "clippy (host tests)", language = "system", entry = '''sh -c 'cargo +stable clippy --manifest-path tests/host/Cargo.toml --all-targets --target "$(rustc +stable -vV | sed -n "s/^host: //p")" -- -D warnings' ''', files = '^tests/host/', types = ["rust"], pass_filenames = false },
 ]

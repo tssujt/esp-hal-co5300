@@ -6,11 +6,11 @@ A `no_std` CO5300 AMOLED QSPI driver for ESP32-S3, built on esp-hal 1.2.x SPI DM
 
 The target board is **Waveshare ESP32-S3-Touch-AMOLED-2.16**. Initialization follows the previously hardware-tested minimal driver and Waveshare BSP **v2.0.1**. The full API has been exercised on this board with `examples/hwtest.rs`.
 
-| Board (official documentation) | Resolution | Controller / interface | Column offset | Status |
-|---|---|---|---|---|
-| [ESP32-S3-Touch-AMOLED-2.16](https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-2.16) | 480×480 | CO5300 / QSPI | 0 | Default target |
-| [ESP32-S3-Touch-AMOLED-1.75](https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-1.75) | 466×466 | CO5300 / QSPI | 6; see `set_gap` in the [official BSP](https://raw.githubusercontent.com/waveshareteam/Waveshare-ESP32-components/bfeb6e6d5737178cdde78b630c8118074da0a657/bsp/esp32_s3_touch_amoled_1_75/esp32_s3_touch_amoled_1_75.c) | Untested; initialization and pins need adaptation |
-| [ESP32-S3-Touch-AMOLED-1.64](https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-1.64) | 280×456 | CO5300 / QSPI | 20; see `offsetx1/2` in the [official V1.1 example](https://raw.githubusercontent.com/waveshareteam/ESP32-S3-Touch-AMOLED-1.64-v2/21b952243d306692774f3b5bfeb3eb5cff10f851/Arduino/examples/06_LVGL_Test/lcd_bsp.c) | Untested; initialization and pins need adaptation |
+| Board (official documentation)                                                      | Resolution | Controller / interface | Column offset                                                                                                                                                                                                           | Status                                            |
+| ----------------------------------------------------------------------------------- | ---------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| [ESP32-S3-Touch-AMOLED-2.16](https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-2.16) | 480×480    | CO5300 / QSPI          | 0                                                                                                                                                                                                                       | Default target                                    |
+| [ESP32-S3-Touch-AMOLED-1.75](https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-1.75) | 466×466    | CO5300 / QSPI          | 6; see `set_gap` in the [official BSP](https://raw.githubusercontent.com/waveshareteam/Waveshare-ESP32-components/bfeb6e6d5737178cdde78b630c8118074da0a657/bsp/esp32_s3_touch_amoled_1_75/esp32_s3_touch_amoled_1_75.c) | Untested; initialization and pins need adaptation |
+| [ESP32-S3-Touch-AMOLED-1.64](https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-1.64) | 280×456    | CO5300 / QSPI          | 20; see `offsetx1/2` in the [official V1.1 example](https://raw.githubusercontent.com/waveshareteam/ESP32-S3-Touch-AMOLED-1.64-v2/21b952243d306692774f3b5bfeb3eb5cff10f851/Arduino/examples/06_LVGL_Test/lcd_bsp.c)     | Untested; initialization and pins need adaptation |
 
 Offsets come from the linked official implementations; all use a row offset of 0. Sharing a controller does not make the 2.16 initialization sequence interchangeable with another panel's. Only officially documented models are listed; this is not a blanket compatibility claim for CO5300/ICNA5300 modules.
 
@@ -50,9 +50,9 @@ See the documentation in [src/driver.rs](src/driver.rs) for detailed API and err
 
 The 2.16 board already connects these signals. Use **SPI2, 40 MHz, Mode 0, MSB-first**, configuring data pins with `with_sio0` through `with_sio3`.
 
-| Signal | SCK | SIO0 | SIO1 | SIO2 | SIO3 | CS | RST |
-|---|---|---|---|---|---|---|---|
-| GPIO | 38 | 4 | 5 | 6 | 7 | 12 | 39 |
+| Signal | SCK | SIO0 | SIO1 | SIO2 | SIO3 | CS  | RST |
+| ------ | --- | ---- | ---- | ---- | ---- | --- | --- |
+| GPIO   | 38  | 4    | 5    | 6    | 7    | 12  | 39  |
 
 CS is controlled by SPI; RST is active low. Single-line readback uses bidirectional SIO0. No D/C pin is needed. The TE API configures panel output but does not wait for the TE signal.
 
@@ -81,32 +81,34 @@ cargo +stable clippy --manifest-path tests/host/Cargo.toml --all-targets --targe
 
 Adjust the host-test target for your machine. `+esp` overrides any shell toolchain setting. Linker flags suppress only the RWX-segment warning from esp-hal's bare-metal layout, not Rust warnings. The example ELF is at `target/xtensa-esp32s3-none-elf/debug/examples/waveshare`.
 
-Formatting and file hygiene checks run through [prek](https://github.com/j178/prek), configured in `prek.toml`. Run `prek install` once to enable the Git hook, or `prek run --all-files` to check everything. CI runs the same hooks, the host tests, and the ESP32-S3 builds.
+rustfmt, clippy (ESP32-S3 and host tests), typos, mdformat, and file hygiene checks run through [prek](https://github.com/j178/prek), configured in `prek.toml`. Run `prek install` once to enable the Git hook, or `prek run --all-files` to check everything. CI runs the same hooks, the host tests, and the ESP32-S3 builds.
 
 ## Limitations
 
 - **Transfer size:** one esp-hal SPI DMA transfer carries at most 32736 bytes, so a 460800-byte frame takes 15 chunks with 32736-byte buffers. The blocking esp-hal API always copies into the DMA buffer; the copy of chunk *n+1* overlaps the transfer of chunk *n*. Zero-copy DMA from PSRAM is only exposed by esp-hal's async API.
+
 - **Memory:** the example uses 2 × 32736 bytes of internal RAM for TX buffers. Smaller buffers work and only increase the number of transactions.
+
 - **Measured on the 2.16 board (40 MHz):**
 
-  | Full-screen operation | Blocking FIFO (before) | DMA |
-  |---|---|---|
-  | `write_area` from PSRAM | 90 ms | 25 ms (~40 fps; bus limit ≈ 23 ms) |
-  | 4 × `fill_rect` | 89 ms | 26 ms |
-  | `write_pixels` (iterator) | 213 ms | 130 ms (CPU-bound in the iterator) |
-  | `BufferedDisplay::flush` | 150 ms | 71 ms |
+  | Full-screen operation     | Blocking FIFO (before) | DMA                                |
+  | ------------------------- | ---------------------- | ---------------------------------- |
+  | `write_area` from PSRAM   | 90 ms                  | 25 ms (~40 fps; bus limit ≈ 23 ms) |
+  | 4 × `fill_rect`           | 89 ms                  | 26 ms                              |
+  | `write_pixels` (iterator) | 213 ms                 | 130 ms (CPU-bound in the iterator) |
+  | `BufferedDisplay::flush`  | 150 ms                 | 71 ms                              |
 
 - Initialization preserves both 600 ms BSP waits; `sleep_in/out` each wait 120 ms. Call `init()` after a reset. `read_id()` uses single-line register 0x04 but returns zeros on the 2.16 board; readback appears unsupported there.
 
 ## References / official drivers
 
-| Resource | Purpose |
-|---|---|
-| [Waveshare 2.16 documentation (current Wiki entry)](https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-2.16) | Board specifications, pins, and resources |
+| Resource                                                                                                                                                   | Purpose                                                                                                                                                                                                                                                                     |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Waveshare 2.16 documentation (current Wiki entry)](https://docs.waveshare.com/ESP32-S3-Touch-AMOLED-2.16)                                                 | Board specifications, pins, and resources                                                                                                                                                                                                                                   |
 | [Waveshare BSP: esp32_s3_touch_amoled_2_16 v2.0.1](https://components.espressif.com/components/waveshare/esp32_s3_touch_amoled_2_16/versions/2.0.1/readme) | **Initialization sequence source**; see `lcd_init_cmds` in the version's [official source](https://raw.githubusercontent.com/waveshareteam/Waveshare-ESP32-components/bfeb6e6d5737178cdde78b630c8118074da0a657/bsp/esp32_s3_touch_amoled_2_16/esp32_s3_touch_amoled_2_16.c) |
-| [Espressif esp_lcd_co5300](https://components.espressif.com/components/espressif/esp_lcd_co5300) | Official controller component |
-| [CO5300 datasheet V0.00 (PDF)](https://dl.espressif.com/AE/esp-iot-solution/CO5300_Datasheet_V0.00.pdf) | Protocol, registers, and timing |
-| [esp-hal 1.2.0 / ESP32-S3 API documentation](https://docs.espressif.com/projects/rust/esp-hal/1.2.0/esp32s3/esp_hal/index.html) | Available documentation for the 1.2 series; this project locks 1.2.2 |
+| [Espressif esp_lcd_co5300](https://components.espressif.com/components/espressif/esp_lcd_co5300)                                                           | Official controller component                                                                                                                                                                                                                                               |
+| [CO5300 datasheet V0.00 (PDF)](https://dl.espressif.com/AE/esp-iot-solution/CO5300_Datasheet_V0.00.pdf)                                                    | Protocol, registers, and timing                                                                                                                                                                                                                                             |
+| [esp-hal 1.2.0 / ESP32-S3 API documentation](https://docs.espressif.com/projects/rust/esp-hal/1.2.0/esp32s3/esp_hal/index.html)                            | Available documentation for the 1.2 series; this project locks 1.2.2                                                                                                                                                                                                        |
 
 All linked resources were checked with `curl -L` on **2026-10-27** and returned HTTP 200 after redirects. The old `www.waveshare.com/wiki/ESP32-S3-Touch-AMOLED-2.16` URL and the separate esp-hal 1.2.2 documentation entry returned 404; the accessible alternatives are linked above.
 
