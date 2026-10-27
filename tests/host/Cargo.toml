@@ -1,0 +1,13 @@
+[package]
+name = "esp-hal-co5300-host-tests"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+embedded-graphics = "0.8.2"
+
+[lib]
+path = "lib.rs"
+
+[workspace]

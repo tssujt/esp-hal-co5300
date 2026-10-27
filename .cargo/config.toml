@@ -1,0 +1,18 @@
+# Override the legacy git registry index in the user's global configuration.
+[source.crates-io]
+registry = "sparse+https://index.crates.io/"
+
+[build]
+target = "xtensa-esp32s3-none-elf"
+
+[target.xtensa-esp32s3-none-elf]
+runner = "espflash flash --monitor --chip esp32s3"
+rustflags = [
+  "-C", "link-arg=-nostartfiles",
+  "-C", "link-arg=-Wl,-Tlinkall.x",
+  # esp-hal places .rotext_dummy and .text in one LOAD segment; suppress only this bare-metal layout warning.
+  "-C", "link-arg=-Wl,--no-warn-rwx-segments",
+]
+
+[unstable]
+build-std = ["alloc", "core"]
