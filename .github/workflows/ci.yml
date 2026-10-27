@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  host-tests:
+    name: Host tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tests/host
+      # The repository root pins the `esp` toolchain and an Xtensa build target,
+      # so the host crate is built with an explicit toolchain and target.
+      - run: cargo +stable test --manifest-path tests/host/Cargo.toml --target x86_64-unknown-linux-gnu
+      - run: cargo +stable clippy --manifest-path tests/host/Cargo.toml --all-targets --target x86_64-unknown-linux-gnu -- -D warnings
+
+  esp32s3:
+    name: ESP32-S3 build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: esp-rs/xtensa-toolchain@v1.7.0
+        with:
+          default: true
+          buildtargets: esp32s3
+          ldproxy: false
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --check
+      - run: cargo build --release --lib
+      - run: cargo build --release --lib --features embedded-graphics
+      - run: cargo build --release --examples --features embedded-graphics
+      - run: cargo clippy --release --lib -- -D warnings
+      - run: cargo clippy --release --lib --examples --features embedded-graphics -- -D warnings
