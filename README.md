@@ -81,6 +81,8 @@ cargo +stable clippy --manifest-path tests/host/Cargo.toml --all-targets --targe
 
 Adjust the host-test target for your machine. `+esp` overrides any shell toolchain setting. Linker flags suppress only the RWX-segment warning from esp-hal's bare-metal layout, not Rust warnings. The example ELF is at `target/xtensa-esp32s3-none-elf/debug/examples/waveshare`.
 
+Formatting and file hygiene checks run through [prek](https://github.com/j178/prek), configured in `prek.toml`. Run `prek install` once to enable the Git hook, or `prek run --all-files` to check everything. CI runs the same hooks, the host tests, and the ESP32-S3 builds.
+
 ## Limitations
 
 - **Transfer size:** one esp-hal SPI DMA transfer carries at most 32736 bytes, so a 460800-byte frame takes 15 chunks with 32736-byte buffers. The blocking esp-hal API always copies into the DMA buffer; the copy of chunk *n+1* overlaps the transfer of chunk *n*. Zero-copy DMA from PSRAM is only exposed by esp-hal's async API.

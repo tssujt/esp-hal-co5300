@@ -86,7 +86,9 @@ mod tests {
     }
     impl ConcatData for Vec<(u8, Vec<u8>)> {
         fn concat_data(&self) -> Vec<u8> {
-            self.iter().flat_map(|(_, data)| data.iter().copied()).collect()
+            self.iter()
+                .flat_map(|(_, data)| data.iter().copied())
+                .collect()
         }
     }
     fn pixel_events(state: &Rc<RefCell<State>>) -> Vec<(u8, Vec<u8>)> {
@@ -201,13 +203,21 @@ mod tests {
         let chunks = pixel_events(&state);
         assert_eq!(state.borrow().events.len(), 2 + 900);
         assert_eq!(chunks[0].0, reg::RAMWR);
-        assert!(chunks[1..].iter().all(|(command, data)| *command == reg::RAMWRC && data.len() == 512));
+        assert!(
+            chunks[1..]
+                .iter()
+                .all(|(command, data)| *command == reg::RAMWRC && data.len() == 512)
+        );
         assert_eq!(chunks.concat_data(), frame);
         // An odd limit is rounded down so no pixel straddles two transactions.
         state.borrow_mut().events.clear();
         state.borrow_mut().max_write = Some(513);
         driver.write_area(0, 0, 480, 480, &frame).unwrap();
-        assert!(pixel_events(&state).iter().all(|(_, data)| data.len() == 512));
+        assert!(
+            pixel_events(&state)
+                .iter()
+                .all(|(_, data)| data.len() == 512)
+        );
         state.borrow_mut().max_write = Some(usize::MAX);
         state.borrow_mut().events.clear();
         driver.write_area(0, 0, 480, 480, &frame).unwrap();
