@@ -24,7 +24,7 @@ jobs:
           buildtargets: esp32s3
           ldproxy: false
       - uses: Swatinem/rust-cache@v2
-      - uses: j178/prek-action@v3.1.0
+      - uses: j178/prek-action@v3.1.1
 
   host-tests:
     name: Host tests
